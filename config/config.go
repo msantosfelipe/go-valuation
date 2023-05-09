@@ -8,7 +8,7 @@ import (
 )
 
 type Environment struct {
-	UrlStockStatusInvest    string  `env:"URL_STOCK_STATUSINVEST"`
+	UrlStockInvest          string  `env:"URL_STATUSINVEST"`
 	BazinDividendPercentage float64 `env:"BAZIN_DIVIDEND_PERCENTAGE"`
 }
 

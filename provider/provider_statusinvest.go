@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/PuerkitoBio/goquery"
@@ -19,13 +17,33 @@ func NewProviderInstance() Provider {
 	return &providerStatusInvest{}
 }
 
-func (p *providerStatusInvest) GetBrStockIndicators(stock string, ch chan ProviderResponse, wg *sync.WaitGroup) {
+func (p *providerStatusInvest) GetBrStocksIndicators(stock string, ch chan IndicatorsStock, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	baseUrl := fmt.Sprintf("%s/acoes/%s", config.ENV.UrlStockStatusInvest, stock)
+	baseUrl := fmt.Sprintf("%s/acoes/%s", config.ENV.UrlStockInvest, stock)
 	doc := getProviderPage(baseUrl)
-	ch <- findFromFundamentus(stock, doc)
+	ch <- stockFromStatusInvest(stock, doc)
 	color.HiGreen("Stock %s processed...", stock)
+}
+
+func (p *providerStatusInvest) GetBrFiisIndicators(stock string, ch chan IndicatorsFiis, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	baseUrl := fmt.Sprintf("%s/fundos-imobiliarios/%s", config.ENV.UrlStockInvest, stock)
+	doc := getProviderPage(baseUrl)
+	_ = doc
+	ch <- fiiFromStatusInvest(stock, doc)
+	color.HiGreen("FII %s processed...", stock)
+}
+
+func (p *providerStatusInvest) GetBrFiagrosIndicators(stock string, ch chan IndicatorsFiis, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	baseUrl := fmt.Sprintf("%s/fiagros/%s", config.ENV.UrlStockInvest, stock)
+	doc := getProviderPage(baseUrl)
+	_ = doc
+	ch <- fiiFromStatusInvest(stock, doc)
+	color.HiGreen("FII %s processed...", stock)
 }
 
 func getProviderPage(baseUrl string) *goquery.Document {
@@ -59,99 +77,4 @@ func getProviderPage(baseUrl string) *goquery.Document {
 	}
 
 	return doc
-}
-
-func findFromFundamentus(stock string, doc *goquery.Document) ProviderResponse {
-	return ProviderResponse{
-		Name:        stock,
-		ActualPrice: getActualPrice(doc),
-		VPA:         getVPA(doc),
-		LPA:         getLPA(doc),
-		ActualDY:    getActualDY(doc),
-		PastYearDY:  getPastYearDY(doc),
-	}
-}
-
-func getActualPrice(doc *goquery.Document) float64 {
-	selection := doc.Find(`[title="Valor atual do ativo"]`).First()
-	stringValue := selection.Find("strong").Text()
-	if stringValue == "" {
-		return 0
-	}
-
-	v := strings.Replace(strings.TrimSpace(stringValue), ",", ".", 1)
-	vpa, err := strconv.ParseFloat(v, 64)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	return vpa
-}
-
-func getVPA(doc *goquery.Document) float64 {
-	selection := doc.Find(`[title="Indica qual o valor patrimonial de uma ação."]`).First()
-	stringValue := selection.Find("strong").Text()
-	if stringValue == "" {
-		return 0
-	}
-
-	v := strings.Replace(strings.TrimSpace(stringValue), ",", ".", 1)
-	vpa, err := strconv.ParseFloat(v, 64)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	return vpa
-}
-
-func getLPA(doc *goquery.Document) float64 {
-	selection := doc.Find(`[title="Indicar se a empresa é ou não lucrativa. Se este número estiver negativo, a empresa está com margens baixas, acumulando prejuízos."]`).First()
-
-	stringValue := selection.Find("strong").Text()
-	if stringValue == "" {
-		return 0
-	}
-
-	v := strings.Replace(strings.TrimSpace(stringValue), ",", ".", 1)
-	lpa, err := strconv.ParseFloat(v, 64)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	return lpa
-}
-
-func getActualDY(doc *goquery.Document) string {
-	var actualDY string
-
-	selection := doc.Find(`[title="Dividend Yield com base nos últimos 12 meses"]`).First()
-	stringValue := selection.Find("strong").Text()
-	if stringValue == "" {
-		return "0%"
-	}
-
-	actualDY = stringValue + "%"
-
-	return actualDY
-}
-
-func getPastYearDY(doc *goquery.Document) float64 {
-	selection := doc.Find(`[title="Soma total de proventos distribuídos nos últimos 12 meses"]`).First()
-	stringValue := selection.Find(".sub-value").Text()
-	if stringValue == "" {
-		return 0
-	}
-
-	valueSplitted := strings.Split(stringValue, "R$")
-	if len(valueSplitted) != 2 {
-		return 0
-	}
-
-	v := strings.Replace(strings.TrimSpace(valueSplitted[1]), ",", ".", 1)
-	pastYearDY, err := strconv.ParseFloat(v, 64)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	return pastYearDY
 }
