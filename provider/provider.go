@@ -1,8 +1,12 @@
 package provider
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
 type ProviderResponse struct {
+	Name        string
 	ActualPrice float64
 	VPA         float64
 	LPA         float64
@@ -20,5 +24,5 @@ func (p *ProviderResponse) ToString() string {
 }
 
 type Provider interface {
-	GetBrStockIndicators(stock string) ProviderResponse
+	GetBrStockIndicators(stock string, ch chan ProviderResponse, wg *sync.WaitGroup)
 }

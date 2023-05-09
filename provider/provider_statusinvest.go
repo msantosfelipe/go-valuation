@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/fatih/color"
 	"github.com/msantosfelipe/go-valuation/config"
 )
 
@@ -17,10 +19,13 @@ func NewProviderInstance() Provider {
 	return &providerStatusInvest{}
 }
 
-func (p *providerStatusInvest) GetBrStockIndicators(stock string) ProviderResponse {
+func (p *providerStatusInvest) GetBrStockIndicators(stock string, ch chan ProviderResponse, wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	baseUrl := fmt.Sprintf("%s/acoes/%s", config.ENV.UrlStockStatusInvest, stock)
 	doc := getProviderPage(baseUrl)
-	return findFromFundamentus(doc)
+	ch <- findFromFundamentus(stock, doc)
+	color.HiGreen("Stock %s processed...", stock)
 }
 
 func getProviderPage(baseUrl string) *goquery.Document {
@@ -56,8 +61,9 @@ func getProviderPage(baseUrl string) *goquery.Document {
 	return doc
 }
 
-func findFromFundamentus(doc *goquery.Document) ProviderResponse {
+func findFromFundamentus(stock string, doc *goquery.Document) ProviderResponse {
 	return ProviderResponse{
+		Name:        stock,
 		ActualPrice: getActualPrice(doc),
 		VPA:         getVPA(doc),
 		LPA:         getLPA(doc),
